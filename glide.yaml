@@ -1,0 +1,4 @@
+package: .
+import:
+- package: github.com/spf13/pflag
+- package: github.com/glerchundi/logrus
