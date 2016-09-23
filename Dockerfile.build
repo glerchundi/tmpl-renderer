@@ -1,0 +1,11 @@
+FROM golang:1.7.1
+
+ARG version
+ENV VERSION ${version}
+
+ADD . /go/src/github.com/glerchundi/tmpl-renderer
+WORKDIR /go/src/github.com/glerchundi/tmpl-renderer
+RUN make fmt && \
+    make vet && \
+    make test && \
+    make build OS=linux

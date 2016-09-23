@@ -1,37 +1,58 @@
-.PHONY: all build test static container push clean
+# MAINTAINER: Gorka Lerchundi Osa <glertxundi@gmail.com>
+.PHONY: build fmt generate lint test vet clean
 
-all: build
+PACKAGE = github.com/glerchundi/tmpl-renderer
+NAME    = `echo $(PACKAGE) | rev | cut -d/ -f1 | rev`
+GIT_REV = `git rev-parse --verify HEAD`
+PKGS    = `go list ./... | grep -v /vendor/`
+OS      = linux windows darwin
+APP     = tmpl-renderer
 
 build:
-	@echo "Building tmpl-renderer..."
-	ROOTPATH=$(shell pwd -P); \
-	GO15VENDOREXPERIMENT=1 go build -o $$ROOTPATH/bin/tmpl-renderer
+ifndef VERSION
+	$(error VERSION is not set)
+else
+	@for app in $(APP) ; do \
+		for os in $(OS) ; do \
+			GO15VENDOREXPERIMENT=1 \
+			GOOS=$$os GOARCH=amd64 CGO_ENABLED=0  \
+			go build \
+				-a -x -tags netgo -installsuffix cgo -installsuffix netgo \
+				-ldflags " \
+					-X main.Version=$(VERSION) \
+					-X main.GitRev=$(GIT_REV) \
+				" \
+				-o ./bin/$$app-$(VERSION)-$$os-amd64 \
+				./cmd/$$app; \
+		done; \
+	done
+endif
+
+fmt:
+	@echo "Running gofmt..."
+	@for dir in $(PKGS) ; do \
+		res=$$(GO15VENDOREXPERIMENT=1 gofmt -l $(GOPATH)/src/$$dir/.); \
+		if [ -n "$$res" ]; then \
+			echo "gofmt checking failed:\n$$res"; \
+			exit 255; \
+		fi \
+	done
+
+generate:
+	@echo "Running go generate..."
+	GO15VENDOREXPERIMENT=1 go generate $(PKGS)
+
+lint:
+	@echo "Running golint..."
+	for dir in $(PKGS) ; do GO15VENDOREXPERIMENT=1 golint $$dir; done
 
 test:
-	@echo "Running tests..."
-	GO15VENDOREXPERIMENT=1 go test
+	@echo "Running go test..."
+	GO15VENDOREXPERIMENT=1 go test $(PKGS)
 
-static:
-	ROOTPATH=$(shell pwd -P); \
-	mkdir -p $$ROOTPATH/bin; \
-	GO15VENDOREXPERIMENT=1 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-	go build \
-		-a -tags netgo -installsuffix cgo -ldflags '-extld ld -extldflags -static' -a -x \
-		-o $$ROOTPATH/bin/tmpl-renderer-linux-amd64 \
-		. \
-	; \
-	ROOTPATH=$(shell pwd -P); \
-	GO15VENDOREXPERIMENT=1 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
-	go build \
-		-a -tags netgo -installsuffix cgo -ldflags '-extld ld -extldflags -static' -a -x \
-		-o $$ROOTPATH/bin/tmpl-renderer-darwin-amd64 \
-		. \
-	; \
-	GO15VENDOREXPERIMENT=1 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
-	go build \
-		-a -tags netgo -installsuffix cgo -ldflags '-extld ld -extldflags -static' -a -x \
-		-o $$ROOTPATH/bin/tmpl-renderer-windows-amd64 \
-		.
+vet:
+	@echo "Running go vet..."
+	GO15VENDOREXPERIMENT=1 go vet $(PKGS)
 
 clean:
-	rm -f bin/tmpl-renderer*
+	rm -f ./bin/*

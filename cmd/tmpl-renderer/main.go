@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
+	"runtime"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -15,8 +18,12 @@ import (
 )
 
 const (
-	cliName        = "tmpl-renderer"
-	cliDescription = "tmpl-renderer renders a template file"
+	cliName = "tmpl-renderer"
+)
+
+var (
+	Version = "0.0.0"
+	GitRev  = "----------------------------------------"
 )
 
 func main() {
@@ -30,6 +37,16 @@ func main() {
 			return flag.NormalizedName(name)
 		},
 	)
+
+	// define usage
+	fs.Usage = func() {
+		goVersion := strings.TrimPrefix(runtime.Version(), "go")
+		fmt.Fprintf(os.Stderr, "%s (version=%s, gitrev=%s, go=%s)\n", cliName, Version, GitRev, goVersion)
+		/*
+		fmt.Fprintf(os.Stderr, "Usage:\n")
+		fs.PrintDefaults()
+		*/
+	}
 
 	// parse
 	fs.Parse(os.Args[1:])
@@ -72,14 +89,14 @@ func main() {
 	funcMap["getFileContent"] = func(i string) string {
 		d, err := ioutil.ReadFile(i)
 		if err != nil {
-			return ""
+			log.Fatalf("%s", err)
 		}
 		return string(d)
 	}
 	funcMap["getFileContentBytes"] = func(i string) []byte {
 		d, err := ioutil.ReadFile(i)
 		if err != nil {
-			return nil
+			log.Fatalf("%s", err)
 		}
 		return d
 	}
@@ -87,17 +104,31 @@ func main() {
 		var b bytes.Buffer
 		w := gzip.NewWriter(&b)
 		if _, err := w.Write(i); err != nil {
-			return nil
+			log.Fatalf("%s", err)
 		}
 
 		if err := w.Close(); err != nil {
-			return nil
+			log.Fatalf("%s", err)
 		}
 
 		return b.Bytes()
 	}
 	funcMap["encodeBase64"] = func(i []byte) string {
 		return base64.StdEncoding.EncodeToString(i)
+	}
+	funcMap["toInt"] = func(s string) int {
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			log.Fatalf("%s", err)
+		}
+
+		return i
+	}
+	funcMap["add"] = func(a, b int) int {
+		return a + b
+	}
+	funcMap["sub"] = func(a, b int) int {
+		return a - b
 	}
 
 	// create template

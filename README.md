@@ -55,3 +55,21 @@ env $(find /your-secrets-path -maxdepth 1 -type l | xargs -I . sh -c "printf '%s
 **NOTE 1**: Please first test if your template works as expected by removing the `kubectl` call!
 
 **NOTE 2**: `-type l` looks for symbolic links, you can modify it to look for regular files using `-type f`.
+
+## Building
+
+Define building configuration:
+```
+export VER=$(./git-version)
+export VER_TRIM=$(echo -e "${VER}" | sed -e 's/^[[v]]*//')
+export APP="tmpl-renderer"
+```
+
+Start building:
+```
+docker build --build-arg version=${VER_TRIM} -f Dockerfile.build -t tmpl-renderer:build-${VER} .
+docker run --rm tmpl-renderer:build-${VER} \
+   cat /go/src/github.com/glerchundi/tmpl-renderer/bin/tmpl-renderer-${VER_TRIM}-linux-amd64 \
+   > bin/tmpl-renderer-${VER_TRIM}-linux-amd64
+chmod 0755 bin/tmpl-renderer-${VER_TRIM}-linux-amd64
+```
