@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -26,9 +27,23 @@ var (
 	GitRev  = "----------------------------------------"
 )
 
+type tmplRendererConfig struct {
+	outputPath string
+}
+
+func newTmplRendererConfig() tmplRendererConfig {
+	return tmplRendererConfig{
+		outputPath: "",
+	}
+}
+
 func main() {
+	trc := newTmplRendererConfig()
+
 	// flags
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	fs.StringVar(&trc.outputPath, "out", trc.outputPath, "")
+
 	fs.SetNormalizeFunc(
 		func(f *flag.FlagSet, name string) flag.NormalizedName {
 			if strings.Contains(name, "_") {
@@ -43,8 +58,8 @@ func main() {
 		goVersion := strings.TrimPrefix(runtime.Version(), "go")
 		fmt.Fprintf(os.Stderr, "%s (version=%s, gitrev=%s, go=%s)\n", cliName, Version, GitRev, goVersion)
 		/*
-		fmt.Fprintf(os.Stderr, "Usage:\n")
-		fs.PrintDefaults()
+			fmt.Fprintf(os.Stderr, "Usage:\n")
+			fs.PrintDefaults()
 		*/
 	}
 
@@ -137,8 +152,22 @@ func main() {
 		log.Fatalf("Unable to process template %s, %s", tmplFile, err)
 	}
 
+	// choose writer between file and stdout
+	var writer io.Writer
+	if trc.outputPath != "" {
+		f, err := os.Create(trc.outputPath)
+		if err != nil {
+			log.Fatalf("Unable to create %s: %v", trc.outputPath, err)
+		}
+		defer f.Close()
+
+		writer = f
+	} else {
+		writer = os.Stdout
+	}
+
 	// and then execute ;)
-	if err = tmpl.Execute(os.Stdout, nil); err != nil {
+	if err = tmpl.Execute(writer, nil); err != nil {
 		log.Fatalf("%s", err)
 	}
 }
