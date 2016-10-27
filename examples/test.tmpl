@@ -3,3 +3,4 @@ Content (string): {{getFileContent "test"}}
 Content (gzip): {{gzip (getFileContentBytes "test")}}
 Content (gzip+base64): {{encodeBase64 (gzip (getFileContentBytes "test"))}}
 Content: {{sub (toInt "4") 2}}
+JSON Encoding of File Content: { "data.yaml": {{encodeJSON (getFileContent "data.yaml")}} }

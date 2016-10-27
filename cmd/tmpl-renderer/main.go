@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -101,17 +102,24 @@ func main() {
 	funcMap := make(map[string]interface{})
 	funcMap["getenv"] = os.Getenv
 	funcMap["getEnv"] = os.Getenv
+	funcMap["encodeJSON"] = func(i interface{}) string {
+		d, err := json.Marshal(i)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+		return string(d)
+	}
 	funcMap["getFileContent"] = func(i string) string {
 		d, err := ioutil.ReadFile(i)
 		if err != nil {
-			log.Fatalf("%s", err)
+			log.Fatalf("%v", err)
 		}
 		return string(d)
 	}
 	funcMap["getFileContentBytes"] = func(i string) []byte {
 		d, err := ioutil.ReadFile(i)
 		if err != nil {
-			log.Fatalf("%s", err)
+			log.Fatalf("%v", err)
 		}
 		return d
 	}
@@ -119,11 +127,11 @@ func main() {
 		var b bytes.Buffer
 		w := gzip.NewWriter(&b)
 		if _, err := w.Write(i); err != nil {
-			log.Fatalf("%s", err)
+			log.Fatalf("%v", err)
 		}
 
 		if err := w.Close(); err != nil {
-			log.Fatalf("%s", err)
+			log.Fatalf("%v", err)
 		}
 
 		return b.Bytes()
@@ -134,7 +142,7 @@ func main() {
 	funcMap["toInt"] = func(s string) int {
 		i, err := strconv.Atoi(s)
 		if err != nil {
-			log.Fatalf("%s", err)
+			log.Fatalf("%v", err)
 		}
 
 		return i
