@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 
 	flag "github.com/spf13/pflag"
@@ -100,8 +101,11 @@ func main() {
 
 	// template funcs
 	funcMap := make(map[string]interface{})
+
 	funcMap["getenv"] = os.Getenv
+
 	funcMap["getEnv"] = os.Getenv
+
 	funcMap["encodeJSON"] = func(i interface{}) string {
 		d, err := json.Marshal(i)
 		if err != nil {
@@ -109,6 +113,7 @@ func main() {
 		}
 		return string(d)
 	}
+
 	funcMap["getFileContent"] = func(i string) string {
 		d, err := ioutil.ReadFile(i)
 		if err != nil {
@@ -116,6 +121,7 @@ func main() {
 		}
 		return string(d)
 	}
+
 	funcMap["getFileContentBytes"] = func(i string) []byte {
 		d, err := ioutil.ReadFile(i)
 		if err != nil {
@@ -123,6 +129,7 @@ func main() {
 		}
 		return d
 	}
+
 	funcMap["gzip"] = func(i []byte) []byte {
 		var b bytes.Buffer
 		w := gzip.NewWriter(&b)
@@ -136,9 +143,11 @@ func main() {
 
 		return b.Bytes()
 	}
+
 	funcMap["encodeBase64"] = func(i []byte) string {
 		return base64.StdEncoding.EncodeToString(i)
 	}
+
 	funcMap["toInt"] = func(s string) int {
 		i, err := strconv.Atoi(s)
 		if err != nil {
@@ -147,11 +156,36 @@ func main() {
 
 		return i
 	}
+
 	funcMap["add"] = func(a, b int) int {
 		return a + b
 	}
+
 	funcMap["sub"] = func(a, b int) int {
 		return a - b
+	}
+
+	var stdin []byte
+	var stdinOnce sync.Once
+	funcMap["getStdin"] = func() []byte {
+		stdinOnce.Do(func() {
+			fi, err := os.Stdin.Stat()
+			if err != nil {
+				return
+			}
+
+			if fi.Mode()&os.ModeNamedPipe == 0 {
+				return
+			}
+
+			data, err := ioutil.ReadAll(os.Stdin)
+			if err != nil {
+				return
+			}
+
+			stdin = data
+		})
+		return stdin
 	}
 
 	// create template
