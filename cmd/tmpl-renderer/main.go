@@ -93,6 +93,7 @@ func main() {
 
 	// template file
 	tmplFile := args[0]
+	basePath := path.Dir(tmplFile)
 
 	// check if file exists
 	if _, err := os.Stat(tmplFile); os.IsNotExist(err) {
@@ -115,7 +116,7 @@ func main() {
 	}
 
 	funcMap["getFileContent"] = func(i string) string {
-		d, err := ioutil.ReadFile(i)
+		d, err := ioutil.ReadFile(path.Join(basePath, i))
 		if err != nil {
 			log.Fatalf("%v", err)
 		}
@@ -123,7 +124,7 @@ func main() {
 	}
 
 	funcMap["getFileContentBytes"] = func(i string) []byte {
-		d, err := ioutil.ReadFile(i)
+		d, err := ioutil.ReadFile(path.Join(basePath, i))
 		if err != nil {
 			log.Fatalf("%v", err)
 		}
