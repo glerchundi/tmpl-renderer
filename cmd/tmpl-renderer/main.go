@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path"
 	"runtime"
 	"strconv"
@@ -186,7 +187,20 @@ func main() {
 
 			stdin = data
 		})
+
 		return stdin
+	}
+
+	funcMap["sopsDecrypt"] = func(i string) []byte {
+		cmd := exec.Command("sops", "-d", path.Join(basePath, i))
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			log.Fatalf("%v", err)
+		}
+
+		return stdout.Bytes()
 	}
 
 	// create template
