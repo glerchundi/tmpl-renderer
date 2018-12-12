@@ -150,6 +150,15 @@ func main() {
 		return base64.StdEncoding.EncodeToString(i)
 	}
 
+	funcMap["decodeBase64"] = func(i string) []byte {
+		d, err := base64.StdEncoding.DecodeString(i)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+
+		return d
+	}
+
 	funcMap["toInt"] = func(s string) int {
 		i, err := strconv.Atoi(s)
 		if err != nil {
@@ -191,17 +200,28 @@ func main() {
 		return stdin
 	}
 
-	funcMap["sopsDecrypt"] = func(i string) []byte {
-		cmd := exec.Command("sops", "-d", path.Join(basePath, i))
-		var stdout, stderr bytes.Buffer
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			log.Fatalf("%v", err)
-		}
+	sopsDecrypt := func(fromBytes bool) func(i interface{}) []byte {
+		return func(i interface{}) []byte {
+			var stdout, stderr bytes.Buffer
+			var cmd *exec.Cmd
+			if fromBytes {
+				cmd = exec.Command("sops", "-d", "/dev/stdin")
+				cmd.Stdin = bytes.NewReader(i.([]byte))
+			} else {
+				cmd = exec.Command("sops", "-d", path.Join(basePath, i.(string)))
+			}
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err != nil {
+				log.Fatalf("%v", err)
+			}
 
-		return stdout.Bytes()
+			return stdout.Bytes()
+		}
 	}
+
+	funcMap["sopsDecrypt"] = sopsDecrypt(false)
+	funcMap["sopsDecryptBytes"] = sopsDecrypt(true)
 
 	// create template
 	tmpl, err := template.New(path.Base(tmplFile)).Funcs(funcMap).ParseFiles(tmplFile)
